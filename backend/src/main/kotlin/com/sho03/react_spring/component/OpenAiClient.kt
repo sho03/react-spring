@@ -4,13 +4,17 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sho03.react_spring.config.OpenAIConfiguration
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import org.springframework.web.reactive.function.client.WebClient
+import reactor.core.publisher.Flux
 
 @Component
 class OpenAiClient(
     private val openAIConfiguration: OpenAIConfiguration,
     @Qualifier("openAiClient") private val openAiClient: RestClient,
+    @Qualifier("openAiStreamClient") private val openAiStreamClient: WebClient,
     private val mapper: ObjectMapper,
 ) {
     fun chat(input: String): String {
@@ -53,4 +57,31 @@ class OpenAiClient(
         val type: String,
         val text: String,
     )
+
+    fun streamingChat(input: String): Flux<String> {
+        val requestBody = mapOf(
+            "model" to openAIConfiguration.model,
+            "input" to input,
+            "stream" to true
+        )
+        val flux = openAiStreamClient
+            .post()
+            .uri("/responses")
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.TEXT_EVENT_STREAM)
+            .bodyValue(requestBody)
+            .retrieve()
+            .bodyToFlux(String::class.java)
+            .map { json ->
+                val nodes = ObjectMapper().readTree(json)
+                val output = nodes["delta"]
+                if (output != null) {
+                    output.asText()
+                } else {
+                    ""
+                }
+            }
+
+        return flux
+    }
 }

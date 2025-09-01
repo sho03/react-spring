@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.reactive.function.client.WebClient
 
 @Component
-class OpenAiWebClient(
+class OpenAiClientConfiguration(
     private val openAIConfiguration: OpenAIConfiguration,
 ) {
     @Bean
@@ -22,5 +22,19 @@ class OpenAiWebClient(
                 headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
             }
             .build()
+    }
+
+    @Bean
+    @Qualifier("openAiStreamClient")
+    fun openAiWebClient(): WebClient {
+        return WebClient.builder()
+            .baseUrl(openAIConfiguration.baseUrl)
+            .defaultHeaders { headers ->
+                headers.setBearerAuth(openAIConfiguration.apiKey)
+                headers.accept = listOf(MediaType.TEXT_EVENT_STREAM)
+                headers.contentType = MediaType.APPLICATION_JSON
+            }
+            .build()
+
     }
 }

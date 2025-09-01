@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import reactor.core.publisher.Flux
 
 @RestController
 @RequestMapping("/api/ai-chat")
@@ -22,4 +23,10 @@ class AiChatController(
     data class ChatRequestBody(
         val input: String,
     )
+
+    @PostMapping("/streaming")
+    fun streamingChat(@RequestBody request: ChatRequestBody): Flux<String> {
+        val result = openAiClient.streamingChat(request.input)
+        return result
+    }
 }
